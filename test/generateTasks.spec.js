@@ -37,6 +37,7 @@ const config = {
   'unknown/*.js': 'unknown-js',
   '*.{css,js}': 'root-css-or-js',
   '../*.{css,js}': 'parent-dir-css-or-js',
+  '../**/*.{css,js}': 'parent-subdir-css-or-js',
 }
 
 describe('generateTasks', () => {
@@ -67,7 +68,11 @@ describe('generateTasks', () => {
     const result = await generateTasks({ config, cwd, files })
 
     result.forEach((task) => {
-      if (task.commands === 'unknown-js' || task.commands === 'parent-dir-css-or-js') {
+      if (
+        task.commands === 'unknown-js' ||
+        task.commands === 'parent-dir-css-or-js' ||
+        task.commands === 'parent-subdir-css-or-js'
+      ) {
         expect(task.fileList.length).toEqual(0)
       } else {
         expect(task.fileList.length).not.toEqual(0)
@@ -192,6 +197,27 @@ describe('generateTasks', () => {
       commands: 'parent-dir-css-or-js',
       fileList: [`/repo/test.js`, `/repo/test.css`].map(normalizePath),
       pattern: '../*.{css,js}',
+    })
+  })
+
+  it('should match files in parent\'s sub-directories when pattern starts with "../**/"', async () => {
+    const result = await generateTasks({
+      config,
+      cwd: '/repo/deeper',
+      files,
+    })
+    const linter = result.find((item) => item.pattern === '../**/*.{css,js}')
+    expect(linter).toEqual({
+      commands: 'parent-subdir-css-or-js',
+      fileList: [
+        '/repo/test.js',
+        '/repo/even/deeper/test.js',
+        '/repo/.hidden/test.js',
+        '/repo/test.css',
+        '/repo/even/deeper/test.css',
+        '/repo/.hidden/test.css',
+      ].map(normalizePath),
+      pattern: '../**/*.{css,js}',
     })
   })
 
